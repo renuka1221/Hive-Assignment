@@ -1,0 +1,133 @@
+This is a real time dataset of the ineuron technical consultant team. You have to perform hive analysis on this given dataset.
+Download Dataset 1 - https://drive.google.com/file/d/1WrG-9qv6atP-W3P_-gYln1hHyFKRKMHP/view
+Download Dataset 2 - https://drive.google.com/file/d/1-JIPCZ34dyN6k9CqJa-Y8yxIGq6vTVXU/view
+Note: both files are csv files. 
+1. Create a schema based on the given dataset
+# creating table 
+Hive> Create table AgentLogingReport
+(
+sr_no int,
+Agent string,
+Date date,
+Login string,
+Logout string,
+Duration string
+)
+row format delimited
+fields terminated by ','
+tblproperties ("skip.header.line.count" = "1");
+
+Hive> Create table AgentPerformance
+(
+sr_no int,
+Date date,
+Agent_Name string,
+Total_charts string,
+Avg_Response_Time string,
+Avg_Resolution_Time string,
+Avg_Rating float,
+Total_Feedback int
+)
+row format delimited
+fields terminated by ','
+tblproperties ("skip.header.line.count" = "1");
+
+hive> alter table AgentPerformance change Total_charts Total_charts int;
+2. Dump the data inside the hdfs in the given schema location.
+Load data local inpath’/home/cloudera/sidd/Challenge/mini _project_1/AgentLogingReport.csv’ into table AgentLogingReport;
+Load data local inpath’/home/cloudera/sidd/Challenge/mini _project_1/ AgentPerformance.csvinto table AgentPerformance;
+
+
+3. List of all agents' names. 
+Hive>  select distinct Agent_Name from AgentPerformance;
+
+Hive>  select count(distinct Agent_Name) from AgentPerformance;
+ 
+4. Find out agent average rating.
+Hive> select Agent_name,avg(Avg_Rating) from AgentPerformance group by Agent_name;
+ 
+5. Total working days for each agents 
+Hive> select Agent,count(distinct Date) from AgentLogingReport group by Agent;
+ 
+6. Total query that each agent have taken 
+Hive> select Agent_name,sum(total_chats) from AgentPerformance group by Agent_name;
+ 
+7. Total Feedback that each agent have received 
+Hive> select Agent_name,sum(Total_Feedback) from AgentPerformance group by Agent_name;
+
+8. Agent name who have average rating between 3.5 to 4 
+Hive> select Agent_name,Avg_Rating from AgentPerformance where Avg_Rating between 3.5 and 4;
+ 
+9. Agent name who have rating less than 3.5 
+Hive> select Agent_name,Avg_Rating from AgentPerformance where Avg_Rating < 3.5;
+
+ 
+10. Agent name who have rating more than 4.5 
+Hive> select Agent_name,Avg_Rating from AgentPerformance where Avg_Rating > 4.5;
+
+ 
+11. How many feedback agents have received more than 4.5 average
+Hive> select Agent_name,avg(Total_Feedback) from AgentPerformance having avg(Total_Feedback) > 4.5;
+ 
+12. average weekly response time for each agent.
+Hive> select s.agent_name,avg(col1[0]*3600+col1[1]*60+substr(col1[2],1,2))/3600  from(
+select agent_name,split(Avg_Response_Time,':') as col1  from AgentPerformance )s group by s.agent_name;
+
+Hive> select agent_name,avg(Avg_Response_Time)as Avg_Response_Time,weekofyear(Date) as weekly from AgentPerformance group by agent_name,weekofyear(Date);
+
+13. average weekly resolution time for each agents 
+Hive> select s.agent_name,avg(col1[0]*3600+col1[1]*60+substr(col1[2],1,2))/3600  from(
+select agent_name,split(Avg_Resolution_Time,':') as col1  from AgentPerformance )s group by s.agent_name;
+ 
+14. Find the number of chat on which they have received a feedback 
+Hive> select agent_name,sum(Total_chats),Total_Feedback from AgentPerformance where Total_Feedback> 0 group by agent_name,Total_Feedback;
+ 
+15. Total contribution hour for each and every agents weekly basis 
+Hive> select s.agent,sum(col1[0]*3600+col1[1]*60+col1[2])/3600 timeInHour,s.weekly  from(
+select agent,split(duration,':') as col1 ,weekofyear(Date) as weekly from AgentLogingReport )s group by s.agent,s.weekly limit 2;
+ 
+16. Perform inner join, left join and right join based on the agent column and after joining the table export that data into your local system.
+Inner join:
+hive -e 'select a.agent,a.date,a.Duration,b.Total_chats,b.Total_Feedback from challenge.AgentLogingReport a join challenge.AgentPerformance b on a.agent = b.agent_name' > /home/cloudera/sidd/Challenge/mini_project_1/inner_join.csv; 
+left join:
+hive -e 'select a.agent,a.date,a.Duration,b.Total_chats,b.Total_Feedback from challenge.AgentLogingReport a left join challenge.AgentPerformance b on a.agent = b.agent_name' > /home/cloudera/sidd/Challenge/mini_project_1/left_join.csv; 
+left join with performance improved due to /*+ streamtable(a) */ hint:
+hive -e 'select /*+ streamtable(a) */a.agent,a.date,a.Duration,b.Total_charts,b.Total_Feedback from challenge.AgentLogingReport a left join challenge.AgentPerformance b on a.agent = b.agent_name' > /home/cloudera/sidd/Challenge/mini_project_1/left_join.csv; 
+Right join:
+hive -e 'select a.agent,a.date,a.Duration,b.Total_charts,b.Total_Feedback from challenge.AgentLogingReport a right join challenge.AgentPerformance b on a.agent = b.agent_name' > /home/cloudera/sidd/Challenge/mini_project_1/right_join.csv; 
+Right join with performance improved due to /*+ streamtable(a) */ hint:
+hive -e 'select /*+ streamtable(a) */a.agent,a.date,a.Duration,b.Total_charts,b.Total_Feedback from challenge.AgentLogingReport a right join challenge.AgentPerformance b on a.agent = b.agent_name' > /home/cloudera/sidd/Challenge/mini_project_1/left_join.csv; 
+
+17. Perform partitioning on top of the agent column and then on top of that perform bucketing for each partitioning.
+
+Create table AgentLogingReport_partitioned
+(
+sr_no int,
+Date date,
+Login string,
+Logout string,
+Duration string
+)partitioned by (Agent string)
+CLUSTERED BY (Date) sorted by (Date) INTO 4 BUCKETS
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ',';
+
+hive> set hive.exec.dynamic.partition=true;
+hive> set hive.exec.dynamic.partition.mode=nonstrict; 
+hive> insert into table AgentLogingReport_partitioned partition(Agent) select sr_no,Date,Login,Logout,Duration,Agent from AgentLogingReport;
+Hive> Create table AgentPerformance_partitioned
+(
+sr_no int,
+Date date,
+Total_charts string,
+Avg_Response_Time string,
+Avg_Resolution_Time string,
+Avg_Rating float,
+Total_Feedback int
+)partitioned by (Agent_name string)
+CLUSTERED BY (Date) sorted by (Date) INTO 8 BUCKETS
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ',';
+
+
+Hive> insert into table AgentPerformance_partitioned partition(Agent_name) select sr_no,Date,Total_charts,Avg_Response_Time,Avg_Resolution_Time,Avg_Rating,Total_Feedback,Agent_name from AgentPerformance;
