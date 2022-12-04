@@ -1,0 +1,77 @@
+
+1. Download vechile sales data -> https://github.com/shashank-mishra219/Hive-Class/blob/main/sales_order_data.csv
+-->sales_order_data.csv
+In local path -  /home/cloudera/renuka/Challenge/sales_order_data.csv  
+2. Store raw data into hdfs location
+$ hadoop fs -put /home/cloudera/renuka/Challenge/sales_order_data.csv  /renuka/challenge/
+
+3. Create a internal hive table "sales_order_csv" which will store csv data sales_order_csv .. make sure to skip header row while creating table
+hive> create table sales_order_csv
+(
+ORDERNUMBER int,QUANTITYORDERED int,PRICEEACH int,ORDERLINENUMBER int,
+SALES int,STATUS string,QTR_ID int,MONTH_ID int,YEAR_ID int,PRODUCTLINE string,
+MSRP int,PRODUCTCODE string,PHONE string,CITY string,STATE string,POSTALCODE int,
+COUNTRY string,TERRITORY string,CONTACTLASTNAME string,CONTACTFIRSTNAME string,
+DEALSIZE string
+)
+row format delimited
+fields terminated by ','
+TBLPROPERTIES(“skip.header.line.count” = “1”);
+
+4. Load data from hdfs path into "sales_order_csv" 
+hive> load data inpath '/renuka/challenge/sales_order_data.csv' into table sales_order_csv;
+hive> set hive.cli.print.header = true;
+to show headers in result of select statement.
+
+
+5. Create an internal hive table which will store data in ORC format "sales_order_orc"
+hive> 
+create table sales_order_orc
+(ORDERNUMBER int,QUANTITYORDERED int,PRICEEACH int,ORDERLINENUMBER int,
+SALES int,STATUS string,QTR_ID int,MONTH_ID int,YEAR_ID int,PRODUCTLINE string,
+MSRP int,PRODUCTCODE string,PHONE string,CITY string,STATE string,POSTALCODE int,
+COUNTRY string,TERRITORY string,CONTACTLASTNAME string,CONTACTFIRSTNAME string,
+DEALSIZE string
+)
+stored as ORC;
+6. Load data from "sales_order_csv" into "sales_order_orc"
+hive> from sales_order_csv insert overwrite table sales_order_orc select *;
+or
+hive> insert overwrite table sales_order_orc select * from sales_order_csv;
+
+7. Perform below menioned queries on "sales_order_orc" table :
+a. Calculatye total sales per year
+hive> select year_ID as year,sum(sales) as Total_Sales from sales_order_csv  group by year_ID ;
+ 
+
+
+b. Find a product for which maximum orders were placed
+hive> select PRODUCTLINE from (select PRODUCTLINE ,sum(QUANTITYORDERED) max from  sales_order_csv group by PRODUCTLINE order by max desc limit 1) a ;
+
+ 
+
+c. Calculate the total sales for each quarter
+hive> select sum(sales) as Total_sales,QTR_ID  from sales_order_csv  group by QTR_ID  order by QTR_ID; 
+ 
+d. In which quarter sales was minimum
+hive> select sum(sales) as sales_order, qtr_id from sales_order_orc group by qtr_id order by sales_order limit 1; 
+ 
+
+
+e. In which country sales was maximum and in which country sales was minimum
+hive> select s1.COUNTRY as Country_max_sales from sales_order_csv s1 where s1.sales in (select max(s2.sales) from sales_order_csv s2);
+
+hive> select s1.COUNTRY as Country_min_sales from sales_order_csv s1 where s1.sales in (select min(s2.sales) from sales_order_csv s2);
+
+
+Hive> select A.country,A.sales from (select country,sales,rank() over (order by sales) rnk_min,rank() over(order by sales desc) rnk_max from sales_order_orc)A where rnk_min = 1 or rnk_max =1 order by sales;
+
+
+f. Calculate quartelry sales for each city
+hive>select quartelry_sales,city from (select sum(s.sales) as quartelry_sales,s.QTR_ID,s.city from sales_order_csv s group by s.QTR_ID,s.city)a;
+
+h. Find a month for each year in which maximum number of quantities were sold.
+Hive> select month_id,year_id,QUANTITYORDERED  from (select distinct month_id,year_id,QUANTITYORDERED ,dense_rank() over(partition by year_id order by QUANTITYORDERED desc) as rnk from sales_order_csv)a where a.rnk = 1;
+ 
+
+
