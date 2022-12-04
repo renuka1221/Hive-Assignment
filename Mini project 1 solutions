@@ -34,8 +34,8 @@ tblproperties ("skip.header.line.count" = "1");
 
 hive> alter table AgentPerformance change Total_charts Total_charts int;
 2. Dump the data inside the hdfs in the given schema location.
-Load data local inpath’/home/cloudera/sidd/Challenge/mini _project_1/AgentLogingReport.csv’ into table AgentLogingReport;
-Load data local inpath’/home/cloudera/sidd/Challenge/mini _project_1/ AgentPerformance.csvinto table AgentPerformance;
+Load data local inpath’/home/cloudera/renuka/Challenge/mini _project_1/AgentLogingReport.csv’ into table AgentLogingReport;
+Load data local inpath’/home/cloudera/renuka/Challenge/mini _project_1/ AgentPerformance.csvinto table AgentPerformance;
 
 
 3. List of all agents' names. 
@@ -128,6 +128,5 @@ Total_Feedback int
 CLUSTERED BY (Date) sorted by (Date) INTO 8 BUCKETS
 ROW FORMAT DELIMITED
 FIELDS TERMINATED BY ',';
-
 
 Hive> insert into table AgentPerformance_partitioned partition(Agent_name) select sr_no,Date,Total_charts,Avg_Response_Time,Avg_Resolution_Time,Avg_Rating,Total_Feedback,Agent_name from AgentPerformance;
